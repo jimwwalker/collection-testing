@@ -16,6 +16,7 @@
 
 # These variables are used by the test script and may require tuning
 
+# CTS = Collection Testing Scripts
 CTS_TOP_DIR=`pwd`
 
 # CTS_CB variables for the couchbase tools and cluster
