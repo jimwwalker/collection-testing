@@ -18,6 +18,8 @@
 . ${CTS_TOP_DIR}/lib/common.sh
 assert_eq $# 2 "Usage: Require two arguments, two collections in different scopes. First collection is dropped"
 
+echo "Running drop collection test - the test will drop $1 from ${CTS_CB_BUCKET}"
+
 COLLECTION1=$1
 COLLECTION2=$2
 assert_ne $1 $2 "$1 and $2 match"
@@ -109,6 +111,9 @@ do
     sleep 1
 done
 echo
+
+# Legacy sees no events, only the stream end
+assert_not_grep "DCP Event" ${LEGACY_DCP}
 
 assert_grep "CollectionDROPPED, id:$COLLECTION1_ID" ${COLLECTION_DCP}
 assert_grep "Stream complete with reason 7" ${COLLECTION_DCP}

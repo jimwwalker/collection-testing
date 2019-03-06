@@ -1,4 +1,20 @@
 #!/bin/bash
+#
+# Copyright 2019 Couchbase, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 . ${CTS_TOP_DIR}/lib/common.sh
 assert_eq $# 2 "Usage: Require two arguments, two collection paths with different scopes. The scope of the first path is dropped"
 
@@ -113,6 +129,9 @@ do
     sleep 1
 done
 echo
+
+# Legacy sees no events, only the stream end
+assert_not_grep "DCP Event" ${LEGACY_DCP}
 
 # Expect to see collection and scope dropped message in the all stream
 assert_grep "CollectionDROPPED, id:${COLLECTION1_ID}" ${ALL_DCP}

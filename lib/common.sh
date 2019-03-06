@@ -60,6 +60,13 @@ function expect_eq() {
     cecho "$3" $red
 }
 
+function expect_ne() {
+    if [ "$1" != "$2" ]; then
+        return
+    fi
+    cecho "$3" $red
+}
+
 function assert_eq() {
     if [ "$1" == "$2" ]; then
         return
