@@ -22,8 +22,9 @@ CTS_TOP_DIR=`pwd`
 # CTS_CB variables for the couchbase tools and cluster
 CTS_CB_BIN=/opt/couchbase/bin
 CTS_CB_BIN=/Users/jimwalker/Code/couchbase/source/install/bin/
-CTS_CB_NODE=10.112.193.101
-CTS_CB_DATA_PORT=11210
+CTS_CB_NODE=127.0.0.1
+CTS_CB_DATA_PORT=12000
+CTS_CB_ADMIN_PORT=9000
 CTS_CB_USER=Administrator
 CTS_CB_PASSWD=asdasd
 
@@ -34,7 +35,7 @@ CTS_KV_ENGINE=${CTS_TOP_DIR}/kv_engine
 CTS_LIB=${CTS_TOP_DIR}/lib
 
 # python under kv_engine is python3
-CTS_PYTHON3=~/Code/couchbase/source/build/tlm/python.install/miniconda3-4.5.4/bin/python
+CTS_PYTHON3=~/Code/couchbase/source/build/tlm/python/miniconda3-4.6.14/bin/python
 # Update python path to know about our mc_bin_client
 PYTHONPATH=${CTS_KV_ENGINE}/engines/ep/management/:${PYTHONPATH}
 
@@ -45,6 +46,7 @@ export CTS_TOP_DIR
 export CTS_CB_BIN
 export CTS_CB_NODE
 export CTS_CB_DATA_PORT
+export CTS_CB_ADMIN_PORT
 export CTS_CB_USER
 export CTS_CB_PASSWD
 export CTS_PYDCP

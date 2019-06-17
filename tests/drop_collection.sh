@@ -18,7 +18,7 @@
 . ${CTS_TOP_DIR}/lib/common.sh
 assert_eq $# 2 "Usage: Require two arguments, two collections in different scopes. First collection is dropped"
 
-echo "Running drop collection test - the test will drop $1 from ${CTS_CB_BUCKET}"
+echo "Running drop collection test - the test will drop collection:$1 from bucket:${CTS_CB_BUCKET}"
 
 COLLECTION1=$1
 COLLECTION2=$2
