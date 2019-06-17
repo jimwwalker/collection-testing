@@ -9,13 +9,8 @@ import (
     "strings"
     "sync"
     "time"
-
     "gocbcore"
-
 )
-
-// A very simple DCP client for demonstrating the use of collections with gocbcore DCP. This work is WIP. To stop the application use
-// SIGINT which will cause a graceful shutdown.
 
 type streamObserver struct {
     endWg sync.WaitGroup
@@ -128,16 +123,8 @@ func main() {
 
     observer := &streamObserver{}
 
-  //  waitCh := make(chan error)
-  //  stop := make(chan os.Signal, 1)
- //   signal.Notify(stop, os.Interrupt)
-
-    // Create a stream-ID stream listening to the scope
+    // Create a stream listening to the specified collection with stream-id 99
     if len(*streamIdScope) > 0 {
-        // Create a filter to focus on only one collection initially and give it stream id 1 so that we can later open another stream
-        // with a different filter on the same vbuckets.
-        // If we wanted to get changes for all collections on a scope we would set Scope instead of Collections (we cannot set both or the server will error).
-        // Collection ids in filters are hex based strings without leading 0x, we may change gocbcore to hide this and accept uint.
         filter := &gocbcore.CollectionStreamFilter{
             Scope: *streamIdScope,
             StreamId: 99,
@@ -158,12 +145,8 @@ func main() {
         }
     }
 
-    // Create a stream listening to the scope
+    // Create a stream listening to the specified scope
     if len(*streamScope) > 0 {
-        // Create a filter to focus on only one collection initially and give it stream id 1 so that we can later open another stream
-        // with a different filter on the same vbuckets.
-        // If we wanted to get changes for all collections on a scope we would set Scope instead of Collections (we cannot set both or the server will error).
-        // Collection ids in filters are hex based strings without leading 0x, we may change gocbcore to hide this and accept uint.
         filter := &gocbcore.CollectionStreamFilter{
             Scope: *streamScope,
         }
@@ -183,9 +166,8 @@ func main() {
         }
     }
 
-    // Create a stream-ID stream listening to the scope
+    // Create a stream listening to the specified collection with stream-id 199
     if len(*streamIdCollection) > 0 {
-        // Create a new filter for the new collection, with a different stream id.
         filter := &gocbcore.CollectionStreamFilter{
             Collections: []string{*streamIdCollection},
             StreamId: 199,
@@ -206,9 +188,8 @@ func main() {
         }
     }
 
-    // Create a stream-ID stream listening to the scope
+    // Create a stream listening to the specified collection
     if len(*streamCollection) > 0 {
-        // Create a new filter for the new collection, with a different stream id.
         filter := &gocbcore.CollectionStreamFilter{
             Collections: []string{*streamCollection},
         }
@@ -244,13 +225,6 @@ func main() {
             }
         }
     }
-
-    // Wait for SIGINT
-  //  select {
- //   case <-waitCh:
-  //  case <-stop:
-  //      close(waitCh)
-  //  }
 
     observer.endWg.Wait()
 

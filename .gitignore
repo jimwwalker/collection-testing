@@ -6,3 +6,4 @@ STREAM_ID_DCP
 kv_engine
 pydcp
 go
+go_dcp/dcp_stream

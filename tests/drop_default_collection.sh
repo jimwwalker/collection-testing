@@ -55,23 +55,24 @@ echo -ne "{\"sid\":199, \"collections\":[\"${DEFAULT_COLLECTION_ID}\"]}]}" >> ${
 
 # Establish our background pydcp clients
 mktemp_tracked LEGACY_DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --keys -t -1 2>&1 > ${LEGACY_DCP} &
+mktemp_tracked ALL_DCP
+mktemp_tracked COLLECTION_DCP
+mktemp_tracked SCOPE_DCP
+mktemp_tracked STREAM_ID_DCP
+
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 2>&1 > ${LEGACY_DCP} &
 register_pid LEGACY_DCP_PID
 
-mktemp_tracked ALL_DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --collections --keys -t -1 2>&1 > ${ALL_DCP} &
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 -collections 2>&1 > ${ALL_DCP} &
 register_pid ALL_DCP_PID
 
-mktemp_tracked COLLECTION_DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD}  --keys  --collections -t -1 -f ${COLLECTION_JSON} 2>&1 > ${COLLECTION_DCP} &
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 -collections -enable-collection "${DEFAULT_COLLECTION_ID}" 2>&1 > ${COLLECTION_DCP} &
 register_pid COLLECTION_DCP_PID
 
-mktemp_tracked SCOPE_DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --collections --keys -t -1 -f ${SCOPE_JSON} 2>&1 > ${SCOPE_DCP} &
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 -collections -enable-scope "${DEFAULT_SCOPE_ID}" 2>&1 > ${SCOPE_DCP} &
 register_pid SCOPE_DCP_PID
 
-mktemp_tracked STREAM_ID_DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --collections --enable-stream-id --keys -t -1 -f ${STREAM_ID_JSON} 2>&1 > ${STREAM_ID_DCP} &
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 -collections -enable-stream-id-collection "${DEFAULT_COLLECTION_ID}" -enable-stream-id-scope "${DEFAULT_SCOPE_ID}" 2>&1 > ${STREAM_ID_DCP} &
 register_pid STREAM_ID_DCP_PID
 
 cecho "Legacy stream DCP output ${LEGACY_DCP}" $green
@@ -80,7 +81,7 @@ cecho "Collection stream DCP output ${COLLECTION_DCP}" $green
 cecho "Scope stream DCP output ${SCOPE_DCP}" $green
 cecho "Stream-ID DCP output ${STREAM_ID_DCP}" $green
 
-${CTS_CB_BIN}/couchbase-cli collection-manage -c ${CTS_CB_NODE} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --bucket ${CTS_CB_BUCKET} --drop-collection _default._default
+${CTS_CB_BIN}/couchbase-cli collection-manage -c "${CTS_CB_NODE}:${CTS_CB_ADMIN_PORT}" -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --bucket ${CTS_CB_BUCKET} --drop-collection _default._default
 assert_eq $? 0 "Failed drop of collection _default._default"
 
 cecho "Success Dropped _default._default" $green
@@ -98,7 +99,7 @@ expect_eq $? 1 "Expected error writing to _default._default"
 
 # write to other collection in the _default scope
 ${CTS_PYTHON3} ${CTS_BIN}/write_key.py ${CTS_CB_NODE} ${CTS_CB_DATA_PORT} ${CTS_CB_USER} ${CTS_CB_PASSWD} ${CTS_CB_BUCKET} 0 ${KEY} ${COLLECTION1}
-expect_eq $? 0 "Expected success writing to ${COLLECTION2}"
+expect_eq $? 0 "Expected success writing to ${COLLECTION1}"
 
 # Wait for the terminator key to appear on all streams and then kill
 while ! grep -q ${KEY} ${STREAM_ID_DCP};
@@ -134,10 +135,15 @@ assert_not_grep "CollectionDROPPED, id:${DEFAULT_COLLECTION_ID}" ${LEGACY_DCP}
 assert_not_grep "DCP Event" ${LEGACY_DCP}
 
 # Finally expect to be denied legacy DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --keys -t -1 2>&1 >> ${LEGACY_DCP}
-expect_ne $? 0 "Expected failure trying to reconnect legacy DCP"
-# Unknown collection for us!
-assert_grep "Unhandled Stream Create Response 136 None" ${LEGACY_DCP}
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 2>&1 >> ${LEGACY_DCP} &
+register_pid LEGACY_DCP_PID2
+
+# Wait for the terminator key to appear on all expected streams
+while ! grep -q "Operation specified an unknown collection. (UNKNOWN_COLLECTION)" ${LEGACY_DCP};
+do
+    echo -n "*_"
+    sleep 1
+done
 
 cecho "Success?" $green
 exit 0
