@@ -30,36 +30,27 @@ assert_eq $? 0 "Cannot map to ID collection ${COLLECTION1}"
 COLLECTION2_SCOPE_ID=`${CTS_PYTHON3} ${CTS_BIN}/get_scope_id.py ${CTS_CB_NODE} ${CTS_CB_DATA_PORT} ${CTS_CB_USER} ${CTS_CB_PASSWD} ${CTS_CB_BUCKET} 0 ${COLLECTION2}`
 assert_eq $? 0 "Cannot map to ID scope ${COLLECTION2}"
 
-# Make JSON filter documents
-mktemp_tracked SCOPE_JSON
-mktemp_tracked COLLECTION_JSON
-mktemp_tracked STREAM_ID_JSON
-echo -e "{\"scope\":\"${COLLECTION2_SCOPE_ID}\"}" > ${SCOPE_JSON}
-echo -e "{\"collections\":[\"${COLLECTION1_ID}\"]}" > ${COLLECTION_JSON}
-# stream ID!
-echo -ne "{\"streams\":[" > ${STREAM_ID_JSON}
-echo -ne "{\"sid\":99, \"scope\":\"${COLLECTION2_SCOPE_ID}\"}," >> ${STREAM_ID_JSON}
-echo -ne "{\"sid\":199, \"collections\":[\"${COLLECTION1_ID}\"]}]}" >> ${STREAM_ID_JSON}
-
 # Establish our background pydcp clients
 mktemp_tracked LEGACY_DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --keys -t -1 2>&1 > ${LEGACY_DCP} &
+mktemp_tracked ALL_DCP
+mktemp_tracked COLLECTION_DCP
+mktemp_tracked SCOPE_DCP
+mktemp_tracked STREAM_ID_DCP
+
+
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 2>&1 > ${LEGACY_DCP} &
 register_pid LEGACY_DCP_PID
 
-mktemp_tracked ALL_DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --collections --keys -t -1 2>&1 > ${ALL_DCP} &
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 -collections 2>&1 > ${ALL_DCP} &
 register_pid ALL_DCP_PID
 
-mktemp_tracked COLLECTION_DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD}  --keys  --collections -t -1 -f ${COLLECTION_JSON} 2>&1 > ${COLLECTION_DCP} &
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 -collections -enable-collection "${COLLECTION1_ID}" 2>&1 > ${COLLECTION_DCP} &
 register_pid COLLECTION_DCP_PID
 
-mktemp_tracked SCOPE_DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --collections --keys -t -1 -f ${SCOPE_JSON} 2>&1 > ${SCOPE_DCP} &
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 -collections -enable-scope "${COLLECTION2_SCOPE_ID}" 2>&1 > ${SCOPE_DCP} &
 register_pid SCOPE_DCP_PID
 
-mktemp_tracked STREAM_ID_DCP
-${CTS_PYTHON} -u ${CTS_PYDCP}/simple_dcp_client.py --node ${CTS_CB_NODE}:${CTS_CB_DATA_PORT} --bucket ${CTS_CB_BUCKET} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --collections --enable-stream-id --keys -t -1 -f ${STREAM_ID_JSON} 2>&1 > ${STREAM_ID_DCP} &
+go_dcp/dcp_stream -server "couchbase://${CTS_CB_NODE}:${CTS_CB_DATA_PORT}" -user ${CTS_CB_USER} -password ${CTS_CB_PASSWD} -bucket ${CTS_CB_BUCKET} -vbuckets=0 -collections -enable-stream-id-collection "${COLLECTION1_ID}" -enable-stream-id-scope "${COLLECTION2_SCOPE_ID}" 2>&1 > ${STREAM_ID_DCP} &
 register_pid STREAM_ID_DCP_PID
 
 cecho "Legacy stream DCP output ${LEGACY_DCP}" $green
@@ -68,7 +59,7 @@ cecho "Collection stream DCP output ${COLLECTION_DCP}" $green
 cecho "Scope stream DCP output ${SCOPE_DCP}" $green
 cecho "Stream-ID DCP output ${STREAM_ID_DCP}" $green
 
-${CTS_CB_BIN}/couchbase-cli collection-manage -c ${CTS_CB_NODE} -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --bucket ${CTS_CB_BUCKET} --drop-collection ${COLLECTION1}
+${CTS_CB_BIN}/couchbase-cli collection-manage -c "${CTS_CB_NODE}:${CTS_CB_ADMIN_PORT}" -u ${CTS_CB_USER} -p ${CTS_CB_PASSWD} --bucket ${CTS_CB_BUCKET} --drop-collection ${COLLECTION1}
 assert_eq $? 0 "Failed drop of collection ${COLLECTION1}"
 
 cecho "Success Dropped ${COLLECTION1}" $green
