@@ -1,0 +1,3 @@
+./tests/drop_collection.sh shop.beer minimart.beer
+./tests/drop_scope.sh shop.wine minimart.beer
+./tests/drop_default_collection.sh _default.beer
